@@ -1,21 +1,20 @@
 import cv2
-import numpy as np
-
-def to_list(image):
-    rad, kolumn, kanaler = image.shape
-    töm_list= []
-    for y in range(rad):
-        töm_list.append([])
-        for x in range(kolumn):
-            c = im[y,x]
-            tup = (c[2], c[1], c[0])
-            töm_list[y].append(tup)
-    return töm_list
+import numpy
+def cvimg_to_list(img):
+    shape = img.shape
+    row = shape[0]
+    kolumner = shape[1]
+    lst=[]
+    for x in range(row):
+        for y in range(kolumner):
+            ans = tuple(img[x,y])
+            lst.append(ans)
+    return lst
 
 def rgblist_to_cvimg(lst, height, width):
     """Return a width x height OpenCV image with specified pixels."""
     # A 3d array that will contain the image data
-    image = numpy.zeros((height, width, 3), numpy.uint8)
+    img = numpy.zeros((height, width, 3), numpy.uint8)
 
     for x in range(0, width):
         for y in range(0, height):
@@ -25,5 +24,8 @@ def rgblist_to_cvimg(lst, height, width):
             img[y, x, 2] = pixel[2]
 
     return img
-
-im = cv2.imread("Baki.jpg")
+img = cv2.imread("Baki.jpg")
+list_img =cvimg_to_list(img)
+converted_img = rgblist_to_cvimg(list_img, img.shape[0], img.shape[1])
+cv2.imshow("converted", converted_img)
+cv2.waitKey(0)
