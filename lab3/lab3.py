@@ -29,11 +29,11 @@ def remove_piece(board, x, y):
     return False
 
 def move_piece(board, x, y, nx, ny):
-    if not is_free(board, x, y): # ifall cord är upptagna
-        spelare = get_piece(board, x, y) #vilken spelare
-        remove_piece(board, x, y)# ta bort gamla cord
-        place_piece(board, nx, ny, spelare) # använd det nya cord
-        return True 
+    if not is_free(board, x, y) and is_free(board, nx, ny):
+        spelare = get_piece(board, x, y)
+        remove_piece(board, x, y)
+        place_piece(board, nx, ny, spelare)
+        return True
     return False
 
 def count(board, diraction, pos, spelare):
