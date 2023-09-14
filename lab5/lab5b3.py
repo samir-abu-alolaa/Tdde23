@@ -1,74 +1,81 @@
 import cv2
-import random
 import numpy as np
+import random
+from lab5a import cvimg_to_list, rgblist_to_cvimg
 
+def pixel_constraint(hlow, hhigh, slow, shigh, vlow, vhigh):
+    """ Returns a function `is_sky` that takes a pixel as input and
+    returns 1 if it falls within the specified constraints, 0 if the pixel is None,
+    and None if the pixel is outside the constraints or has invalid format. """
+    def is_sky(px):
+        if px is None:
+            return None  # Return None for None pixels
+        try:
+            # Check if the pixel falls within the specified color channel constraints
+            if hlow <= px[0] <= hhigh and slow <= px[1] <= shigh and vlow <= px[2] <= vhigh:
+                return 1
+        except (TypeError, IndexError):
+            return None  # Return None for pixels with invalid format
+        return 0  # Return 0 for pixels that do not meet the constraints
+    return is_sky
 def generator_from_image(image_list):
     def generator(index):
-        return image_list[index]
+        if 0 <= index < len(image_list):
+            return image_list[index]
+        else:
+            return None
     return generator
 
-def cvimg_to_list(img):
-    """
-    Converts image to list
-    """
-    height = img.shape[0]
-    width = img.shape[1]
-    cvlist = []
-    try:
-        for y in range(height):
-            for x in range(width):
-                cvlist.append((img[y, x][0], img[y, x][1], img[y, x][2]))
-    except TypeError:
-        return None
-    except IndexError:
-        return None
+# Läs in en bild
+plane_img = cv2.imread("plane.jpg")
 
-    return cvlist
+# Konvertera bilden till en NumPy-array
+plane_img_array = np.array(plane_img)
 
-def rgblist_to_cvimg(lst, height, width):
-    """Return a width x height OpenCV image with specified pixels."""
-    # A 3d array that will contain the image data
-    img = np.zeros((height, width, 3), np.uint8)
+# Skapa ett filter som identifierar himlen
+condition = pixel_constraint(100, 150, 50, 200, 100, 255)
 
-    for x in range(0, width):
-        for y in range(0, height):
-            pixel = lst[y * width + x]
-            img[y, x, 0] = pixel[0]
-            img[y, x, 1] = pixel[1]
-            img[y, x, 2] = pixel[2]
+# Omvandla originalbilden till en lista med HSV-färger
+hsv_list = cvimg_to_list(cv2.cvtColor(plane_img, cv2.COLOR_BGR2HSV))
+plane_img_list = cvimg_to_list(plane_img)
 
-    return img
+# Skapa en generator som gör en stjärnhimmel
+def generator1(index):
+    val = random.random() * 255 if random.random() > 0.99 else 0
+    return (val, val, val)
+
 
 def combine_images(image_list, condition, generator1, generator2):
     result = []
+    if len(image_list) == 0:
+        return result  # Return empty list if image_list is empty
+
+    if len(image_list) == 1:
+        pixel = image_list[0]
+        if condition(pixel):
+            return [generator1(
+                0)]  # Return generator1 result if image_list has a single pixel and it satisfies the condition
+        else:
+            return [generator2(
+                0)]  # Return generator2 result if image_list has a single pixel and it doesn't satisfy the condition
+
+
     for i, pixel in enumerate(image_list):
-        cond = condition(pixel)
-        gen1 = generator1(i)
-        gen2 = generator2(i)
-        combined_pixel = tuple(int(c1 * cond + c2 * (1 - cond)) for c1, c2 in zip(gen1, gen2))
-        result.append(combined_pixel)
+        if condition(pixel):
+            result.append(generator1(i))
+        else:
+            result.append(generator2(i))
     return result
 
-def gradient_condition(pixel):
-    gray = sum(pixel) // 3
-    return gray / 255
 
-# Läs in originalbilderna från fil
-flower_img = cv2.imread("flower.jpg")
-plane_img = cv2.imread("plane.jpg")
-gradient_img = cv2.imread("gradient.jpg")
+# Skapa en generator för den inlästa bilden
+generator2 = generator_from_image(plane_img_list)
 
-# Skapa generatorer för varje bild
-generator1 = generator_from_image(cvimg_to_list(gradient_img))
-generator2 = generator_from_image(cvimg_to_list(plane_img))
+# Kombinera de två bilderna till en, alltså använd himmelsfiltret som mask
+result = combine_images(hsv_list, condition, generator1, generator2)
 
-# Skapa ett filter baserat på gråskala för gradientbilden
-condition = gradient_condition
-
-# Kombinera bilderna med den mjuka övergången
-result = combine_images(cvimg_to_list(flower_img), condition, generator1, generator2)
-
-# Konvertera resultatet till en bild och visa upp den
-new_img = rgblist_to_cvimg(result, flower_img.shape[0], flower_img.shape[1])
+# Omvandla resultatet till en riktig bild och visa upp den
+new_img = rgblist_to_cvimg(result, plane_img.shape[0], plane_img.shape[1])
 cv2.imshow('Final image', new_img)
 cv2.waitKey(0)
+
